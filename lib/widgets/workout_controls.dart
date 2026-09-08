@@ -74,7 +74,7 @@ class WorkoutStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 132,
-      padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0x330E1012),
         border: Border.all(color: const Color(0xFF181A1D)),

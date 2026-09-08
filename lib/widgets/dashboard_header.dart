@@ -6,11 +6,15 @@ class DashboardHeader extends StatelessWidget {
   const DashboardHeader({
     required this.currentTime,
     required this.currentDate,
+    this.deviceName = 'Schwinn IC8',
+    this.connectionStatus = 'Disconnected',
     super.key,
   });
 
   final String currentTime;
   final String currentDate;
+  final String deviceName;
+  final String connectionStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +42,10 @@ class DashboardHeader extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const _DeviceStatus(),
+                _DeviceStatus(
+                  deviceName: deviceName,
+                  connectionStatus: connectionStatus,
+                ),
                 const SizedBox(height: 18),
                 const _Tagline(),
               ],
@@ -53,7 +60,10 @@ class DashboardHeader extends StatelessWidget {
               const _Branding(),
               const SizedBox(width: 48),
               const Expanded(child: _Tagline()),
-              const _DeviceStatus(),
+              _DeviceStatus(
+                deviceName: deviceName,
+                connectionStatus: connectionStatus,
+              ),
               const SizedBox(width: 36),
               _Clock(currentTime: currentTime, currentDate: currentDate),
               const SizedBox(width: 28),
@@ -136,7 +146,13 @@ class _Tagline extends StatelessWidget {
 }
 
 class _DeviceStatus extends StatelessWidget {
-  const _DeviceStatus();
+  const _DeviceStatus({
+    required this.deviceName,
+    required this.connectionStatus,
+  });
+
+  final String deviceName;
+  final String connectionStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -153,13 +169,13 @@ class _DeviceStatus extends StatelessWidget {
         children: [
           const Icon(Icons.bluetooth, color: Colors.white, size: 28),
           const SizedBox(width: 18),
-          const Expanded(
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Schwinn IC8',
+                  deviceName,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -170,11 +186,11 @@ class _DeviceStatus extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.circle, color: rideDashRed, size: 8),
+                    Icon(Icons.circle, color: _statusColor, size: 8),
                     SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        'Disconnected',
+                        connectionStatus,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: rideDashSecondaryText,
@@ -190,6 +206,17 @@ class _DeviceStatus extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color get _statusColor {
+    switch (connectionStatus.toLowerCase()) {
+      case 'connected':
+        return const Color(0xFF55F05B);
+      case 'connecting':
+        return rideDashRed;
+      default:
+        return rideDashRed;
+    }
   }
 }
 

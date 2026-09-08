@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../bluetooth/bluetooth_service.dart';
 import '../theme/ride_dash_theme.dart';
+import 'bluetooth_screen.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_sidebar.dart';
 import '../widgets/metric_card.dart';
@@ -17,6 +19,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final BluetoothService _bluetoothService = BluetoothService.instance;
   late DateTime _currentTime;
   Timer? _clockTimer;
 
@@ -69,13 +72,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const DashboardSidebar(),
+            DashboardSidebar(
+              onBluetooth: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BluetoothScreen(),
+                  ),
+                );
+              },
+            ),
             Expanded(
               child: Column(
                 children: [
-                  DashboardHeader(
-                    currentTime: _formattedTime,
-                    currentDate: _formattedDate,
+                  AnimatedBuilder(
+                    animation: _bluetoothService,
+                    builder: (context, _) => DashboardHeader(
+                      currentTime: _formattedTime,
+                      currentDate: _formattedDate,
+                      deviceName: _bluetoothService.headerDeviceName,
+                      connectionStatus:
+                          _bluetoothService.headerConnectionStatus,
+                    ),
                   ),
                   Expanded(
                     child: Container(

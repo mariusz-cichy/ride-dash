@@ -45,12 +45,14 @@ class GattCharacteristicInfo {
     required this.uuid,
     required this.properties,
     required this.canRead,
+    required this.characteristic,
   });
 
   final String? name;
   final String uuid;
   final List<String> properties;
   final bool canRead;
+  final fbp.BluetoothCharacteristic characteristic;
 }
 
 class GattServiceInfo {
@@ -110,6 +112,7 @@ class GattInspector {
             uuid: characteristicUuid,
             properties: List.unmodifiable(properties),
             canRead: characteristic.properties.read,
+            characteristic: characteristic,
           ),
         );
       }

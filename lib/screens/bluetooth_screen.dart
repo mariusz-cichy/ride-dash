@@ -200,7 +200,10 @@ class _BluetoothContent extends StatelessWidget {
                     ],
                     if (service.gattInspection != null) ...[
                       const SizedBox(height: 20),
-                      _GattInspectorPanel(result: service.gattInspection!),
+                      _GattInspectorPanel(
+                        result: service.gattInspection!,
+                        service: service,
+                      ),
                     ],
                   ],
                 ),
@@ -347,9 +350,10 @@ class _DeviceTile extends StatelessWidget {
 }
 
 class _GattInspectorPanel extends StatelessWidget {
-  const _GattInspectorPanel({required this.result});
+  const _GattInspectorPanel({required this.result, required this.service});
 
   final GattInspectionResult result;
+  final BluetoothService service;
 
   @override
   Widget build(BuildContext context) {
@@ -383,6 +387,42 @@ class _GattInspectorPanel extends StatelessWidget {
             const _DiagnosticBanner(
               title: 'INDOOR BIKE DATA',
               subtitle: 'Candidate for live RideDash metrics',
+            ),
+          ],
+          if (result.ftmsDetected && result.indoorBikeDataDetected) ...[
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: service.isFtmsMonitoring
+                  ? service.stopFtmsMonitor
+                  : service.startFtmsMonitor,
+              icon: Icon(service.isFtmsMonitoring ? Icons.stop : Icons.sensors),
+              label: Text(
+                service.isFtmsMonitoring
+                    ? 'STOP FTMS MONITOR'
+                    : 'START FTMS MONITOR',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: service.isFtmsMonitoring
+                    ? rideDashRed
+                    : Colors.white,
+                side: BorderSide(
+                  color: service.isFtmsMonitoring
+                      ? rideDashRed
+                      : rideDashBorder,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'FTMS MONITOR\n${service.isFtmsMonitoring ? '● LISTENING' : '○ STOPPED'}',
+              style: TextStyle(
+                color: service.isFtmsMonitoring
+                    ? const Color(0xFF55F05B)
+                    : rideDashSecondaryText,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
             ),
           ],
           const SizedBox(height: 14),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../bluetooth/bluetooth_service.dart';
+import '../bluetooth/ftms_indoor_bike_data.dart';
 import '../theme/ride_dash_theme.dart';
 import 'bluetooth_screen.dart';
 import '../widgets/dashboard_header.dart';
@@ -10,6 +11,12 @@ import '../widgets/dashboard_sidebar.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/ride_timer.dart';
 import '../widgets/workout_controls.dart';
+
+String formatCadenceMetric(double? cadenceRpm) =>
+    cadenceRpm?.toStringAsFixed(0) ?? '--';
+
+String formatSpeedMetric(double? speedKmh) =>
+    speedKmh?.toStringAsFixed(1) ?? '--';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -95,28 +102,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   Expanded(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.black,
-                        border: Border(
-                          left: BorderSide(color: rideDashBorder),
-                          top: BorderSide(color: rideDashBorder),
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(18),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(24, 44, 24, 38),
-                        child: Column(
-                          children: [
-                            const RideTimer(),
-                            const SizedBox(height: 66),
-                            const _MetricsGrid(),
-                            const SizedBox(height: 40),
-                            const _BottomRow(),
-                          ],
-                        ),
+                    child: AnimatedBuilder(
+                      animation: _bluetoothService,
+                      builder: (context, _) => _DashboardContent(
+                        liveData: _bluetoothService.liveIndoorBikeData,
                       ),
                     ),
                   ),
@@ -130,21 +119,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _MetricsGrid extends StatelessWidget {
-  const _MetricsGrid();
+class _DashboardContent extends StatelessWidget {
+  const _DashboardContent({required this.liveData});
+
+  final IndoorBikeData? liveData;
 
   @override
   Widget build(BuildContext context) {
-    const metrics = [
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        border: Border(
+          left: BorderSide(color: rideDashBorder),
+          top: BorderSide(color: rideDashBorder),
+        ),
+        borderRadius: BorderRadius.only(topLeft: Radius.circular(18)),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 44, 24, 38),
+        child: Column(
+          children: [
+            const RideTimer(),
+            const SizedBox(height: 66),
+            _MetricsGrid(liveData: liveData),
+            const SizedBox(height: 40),
+            const _BottomRow(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricsGrid extends StatelessWidget {
+  const _MetricsGrid({required this.liveData});
+
+  final IndoorBikeData? liveData;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = [
       MetricCard(
         label: 'CADENCE',
-        value: '87',
+        value: formatCadenceMetric(liveData?.cadenceRpm),
         unit: 'RPM',
         icon: Icons.rotate_right,
       ),
       MetricCard(
         label: 'SPEED',
-        value: '31.4',
+        value: formatSpeedMetric(liveData?.speedKmh),
         unit: 'KM/H',
         icon: Icons.speed,
       ),

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'bluetooth_device_info.dart';
+import 'ftms_indoor_bike_data.dart';
 import 'gatt_inspector.dart';
 
 class BluetoothService extends ChangeNotifier {
@@ -30,8 +31,10 @@ class BluetoothService extends ChangeNotifier {
   int _ftmsPacketCount = 0;
   final Set<int> _ftmsPacketLengths = {};
   final Set<int> _ftmsFlags = {};
+  final FtmsIndoorBikeDataParser _ftmsParser = const FtmsIndoorBikeDataParser();
   String? _errorMessage;
   GattInspectionResult? _gattInspection;
+  IndoorBikeData? _liveIndoorBikeData;
 
   List<BluetoothDeviceInfo> get devices {
     final values = _devices.values.toList();
@@ -60,6 +63,7 @@ class BluetoothService extends ChangeNotifier {
   bool get isFtmsMonitoring => _isFtmsMonitoring;
   String? get errorMessage => _errorMessage;
   GattInspectionResult? get gattInspection => _gattInspection;
+  IndoorBikeData? get liveIndoorBikeData => _liveIndoorBikeData;
 
   String get headerDeviceName => _connectedDevice?.name ?? 'Schwinn IC8';
 
@@ -153,6 +157,7 @@ class BluetoothService extends ChangeNotifier {
       );
       info.connectionState = RideDashDeviceConnectionState.connected;
       _connectedDevice = info;
+      unawaited(_ensureLiveFtmsMonitor());
       debugPrint(
         '[RideDash BLE] connection success ${info.identifier}; ready for GATT discovery in RD-004',
       );
@@ -178,6 +183,7 @@ class BluetoothService extends ChangeNotifier {
       _setError('Disconnect failed: ${_shortError(error)}');
     } finally {
       _gattInspection = null;
+      _liveIndoorBikeData = null;
       info.connectionState = RideDashDeviceConnectionState.disconnected;
       _connectedDevice = null;
       _isConnecting = false;
@@ -256,6 +262,14 @@ class BluetoothService extends ChangeNotifier {
     }
   }
 
+  Future<void> _ensureLiveFtmsMonitor() async {
+    if (_isFtmsMonitoring || _isStartingFtmsMonitor) return;
+    if (_gattInspection == null) {
+      await inspectGatt();
+    }
+    await startFtmsMonitor();
+  }
+
   Future<void> stopFtmsMonitor() async {
     final wasMonitoring = _isFtmsMonitoring;
     _isFtmsMonitoring = false;
@@ -319,6 +333,12 @@ class BluetoothService extends ChangeNotifier {
       final flags = value[0] | (value[1] << 8);
       _ftmsFlags.add(flags);
       debugPrint('FLAGS RAW: 0x${flags.toRadixString(16).padLeft(4, '0')}');
+    }
+    try {
+      _liveIndoorBikeData = _ftmsParser.parse(value);
+      notifyListeners();
+    } on FtmsPacketFormatException catch (error) {
+      debugPrint('[RideDash FTMS] Parser rejected packet: ${error.message}');
     }
   }
 
@@ -388,6 +408,7 @@ class BluetoothService extends ChangeNotifier {
           } else {
             unawaited(stopFtmsMonitor());
             _gattInspection = null;
+            _liveIndoorBikeData = null;
             info.connectionState = RideDashDeviceConnectionState.disconnected;
             if (_connectedDevice?.identifier == info.identifier) {
               _connectedDevice = null;

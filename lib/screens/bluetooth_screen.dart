@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../bluetooth/bluetooth_device_info.dart';
+import '../bluetooth/gatt_inspector.dart';
 import '../bluetooth/bluetooth_service.dart';
 import '../theme/ride_dash_theme.dart';
 import '../widgets/dashboard_header.dart';
@@ -197,6 +198,10 @@ class _BluetoothContent extends StatelessWidget {
                       _DeviceTile(device: device, service: service),
                       const SizedBox(height: 12),
                     ],
+                    if (service.gattInspection != null) ...[
+                      const SizedBox(height: 20),
+                      _GattInspectorPanel(result: service.gattInspection!),
+                    ],
                   ],
                 ),
               ),
@@ -289,14 +294,31 @@ class _DeviceTile extends StatelessWidget {
             ),
           ),
           if (connected)
-            OutlinedButton.icon(
-              onPressed: service.disconnect,
-              icon: const Icon(Icons.link_off),
-              label: const Text('DISCONNECT'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: rideDashRed,
-                side: const BorderSide(color: rideDashRed),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: service.inspectGatt,
+                  icon: const Icon(Icons.account_tree_outlined),
+                  label: Text(
+                    service.isInspectingGatt ? 'INSPECTING...' : 'INSPECT GATT',
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: rideDashBorder),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  onPressed: service.disconnect,
+                  icon: const Icon(Icons.link_off),
+                  label: const Text('DISCONNECT'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: rideDashRed,
+                    side: const BorderSide(color: rideDashRed),
+                  ),
+                ),
+              ],
             )
           else
             ElevatedButton(
@@ -323,6 +345,142 @@ class _DeviceTile extends StatelessWidget {
     }
   }
 }
+
+class _GattInspectorPanel extends StatelessWidget {
+  const _GattInspectorPanel({required this.result});
+
+  final GattInspectionResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: rideDashPanel,
+        border: Border.all(color: rideDashBorder),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'GATT SERVICE INSPECTOR',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (result.ftmsDetected)
+            const _DiagnosticBanner(
+              title: 'FITNESS MACHINE SERVICE',
+              subtitle: 'FTMS DETECTED',
+            ),
+          if (result.indoorBikeDataDetected) ...[
+            const SizedBox(height: 8),
+            const _DiagnosticBanner(
+              title: 'INDOOR BIKE DATA',
+              subtitle: 'Candidate for live RideDash metrics',
+            ),
+          ],
+          const SizedBox(height: 14),
+          for (var index = 0; index < result.services.length; index++) ...[
+            _GattServiceTile(service: result.services[index]),
+            if (index < result.services.length - 1) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _GattServiceTile extends StatelessWidget {
+  const _GattServiceTile({required this.service});
+
+  final GattServiceInfo service;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        border: Border.all(color: rideDashBorder),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'SERVICE  ${service.name ?? 'Unknown Service'}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(service.uuid, style: _diagnosticTextStyle),
+          for (final characteristic in service.characteristics) ...[
+            const SizedBox(height: 12),
+            Text(
+              'CHARACTERISTIC  ${characteristic.name ?? 'Unknown Characteristic'}',
+              style: const TextStyle(
+                color: rideDashSecondaryText,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(characteristic.uuid, style: _diagnosticTextStyle),
+            Text(
+              'Properties: ${characteristic.properties.join(', ')}',
+              style: _diagnosticTextStyle,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DiagnosticBanner extends StatelessWidget {
+  const _DiagnosticBanner({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: rideDashRed),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, color: rideDashRed, size: 18),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              '$title  |  $subtitle',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const _diagnosticTextStyle = TextStyle(
+  color: rideDashSecondaryText,
+  fontSize: 12,
+);
 
 class _MessagePanel extends StatelessWidget {
   const _MessagePanel({required this.message, this.isError = false});

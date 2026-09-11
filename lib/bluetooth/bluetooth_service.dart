@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'bluetooth_device_info.dart';
+import 'gatt_inspector.dart';
 
 class BluetoothService extends ChangeNotifier {
   BluetoothService._() {
@@ -21,7 +22,9 @@ class BluetoothService extends ChangeNotifier {
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
   bool _isScanning = false;
   bool _isConnecting = false;
+  bool _isInspectingGatt = false;
   String? _errorMessage;
+  GattInspectionResult? _gattInspection;
 
   List<BluetoothDeviceInfo> get devices {
     final values = _devices.values.toList();
@@ -46,7 +49,9 @@ class BluetoothService extends ChangeNotifier {
   BluetoothAdapterState get adapterState => _adapterState;
   bool get isScanning => _isScanning;
   bool get isConnecting => _isConnecting;
+  bool get isInspectingGatt => _isInspectingGatt;
   String? get errorMessage => _errorMessage;
+  GattInspectionResult? get gattInspection => _gattInspection;
 
   String get headerDeviceName => _connectedDevice?.name ?? 'Schwinn IC8';
 
@@ -99,6 +104,7 @@ class BluetoothService extends ChangeNotifier {
           'Bluetooth is disabled. Turn it on in Windows settings.',
         );
       }
+      debugPrint('Tutaj');
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 12));
     } catch (error) {
       _setError('Unable to scan: ${_shortError(error)}');
@@ -162,11 +168,35 @@ class BluetoothService extends ChangeNotifier {
     } catch (error) {
       _setError('Disconnect failed: ${_shortError(error)}');
     } finally {
+      _gattInspection = null;
       info.connectionState = RideDashDeviceConnectionState.disconnected;
       _connectedDevice = null;
       _isConnecting = false;
       notifyListeners();
       debugPrint('[RideDash BLE] disconnect event ${info.identifier}');
+    }
+  }
+
+  Future<void> inspectGatt() async {
+    final info = _connectedDevice;
+    if (info == null ||
+        info.connectionState != RideDashDeviceConnectionState.connected) {
+      return;
+    }
+    _errorMessage = null;
+    _isInspectingGatt = true;
+    notifyListeners();
+    try {
+      _gattInspection = await GattInspector.inspect(info.device);
+      if (_gattInspection!.services.isEmpty) {
+        _setError('GATT discovery returned no services.');
+      }
+    } catch (error) {
+      _gattInspection = null;
+      _setError('GATT discovery failed: ${_shortError(error)}');
+    } finally {
+      _isInspectingGatt = false;
+      notifyListeners();
     }
   }
 
@@ -207,6 +237,7 @@ class BluetoothService extends ChangeNotifier {
             _connectedDevice = info;
             debugPrint('[RideDash BLE] connection success ${info.identifier}');
           } else {
+            _gattInspection = null;
             info.connectionState = RideDashDeviceConnectionState.disconnected;
             if (_connectedDevice?.identifier == info.identifier) {
               _connectedDevice = null;
